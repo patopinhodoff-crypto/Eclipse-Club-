@@ -489,6 +489,154 @@
 
   observer.observe(document.body, { childList: true, subtree: true });
 
+  /* ── Support ticket system ──────────────────────────────── */
+  var SUPPORT_I18N = {
+    en: { btn: '💬 Support', title: 'Open Support Ticket', user: 'Your username', msg: 'Describe your issue...', send: 'Send Ticket', sending: 'Sending...', ok: '✅ Ticket sent! We\'ll help you soon.', err: '❌ Error sending. Try again.' },
+    pt: { btn: '💬 Suporte', title: 'Abrir Ticket de Suporte', user: 'Seu usuário', msg: 'Descreva o problema...', send: 'Enviar Ticket', sending: 'Enviando...', ok: '✅ Ticket enviado! Em breve te ajudamos.', err: '❌ Erro ao enviar. Tente novamente.' },
+    es: { btn: '💬 Soporte', title: 'Abrir Ticket de Soporte', user: 'Tu usuario', msg: 'Describe el problema...', send: 'Enviar Ticket', sending: 'Enviando...', ok: '✅ ¡Ticket enviado! Te ayudaremos pronto.', err: '❌ Error al enviar. Inténtalo de nuevo.' },
+    ru: { btn: '💬 \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430', title: '\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0442\u0438\u043a\u0435\u0442', user: '\u0412\u0430\u0448 \u043d\u0438\u043a', msg: '\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0443...', send: '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0442\u0438\u043a\u0435\u0442', sending: '\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430...', ok: '\u2705 \u0422\u0438\u043a\u0435\u0442 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d!', err: '\u274c \u041e\u0448\u0438\u0431\u043a\u0430. \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u043f\u044b\u0442\u043a\u0443.' },
+    fr: { btn: '💬 Support', title: 'Ouvrir un ticket', user: 'Votre pseudo', msg: 'D\u00e9crivez votre probl\u00e8me...', send: 'Envoyer', sending: 'Envoi...', ok: '\u2705 Ticket envoy\u00e9 !', err: '\u274c Erreur. R\u00e9essayez.' },
+    de: { btn: '💬 Support', title: 'Support-Ticket \u00f6ffnen', user: 'Ihr Nutzername', msg: 'Beschreiben Sie das Problem...', send: 'Ticket senden', sending: 'Senden...', ok: '\u2705 Ticket gesendet!', err: '\u274c Fehler. Nochmal versuchen.' },
+    it: { btn: '💬 Supporto', title: 'Apri ticket di supporto', user: 'Il tuo username', msg: 'Descrivi il problema...', send: 'Invia ticket', sending: 'Invio...', ok: '\u2705 Ticket inviato!', err: '\u274c Errore. Riprova.' },
+    tr: { btn: '💬 Destek', title: 'Destek Bileti A\u00e7', user: 'Kullan\u0131c\u0131 ad\u0131n\u0131z', msg: 'Sorunu a\u00e7\u0131klay\u0131n...', send: 'Ticket G\u00f6nder', sending: 'G\u00f6nderiliyor...', ok: '\u2705 Ticket g\u00f6nderildi!', err: '\u274c Hata. Tekrar deneyin.' },
+  };
+
+  function injectSupportSystem() {
+    var lang = localStorage.getItem(LANG_KEY) || 'en';
+    var i18n = SUPPORT_I18N[lang] || SUPPORT_I18N.en;
+
+    /* CSS */
+    var style = document.createElement('style');
+    style.textContent = [
+      '#rc-support-btn{position:fixed;bottom:24px;left:24px;z-index:999990;',
+        'background:linear-gradient(135deg,rgba(4,20,8,0.98),rgba(2,12,5,0.98));',
+        'border:1px solid rgba(34,197,94,0.35);border-radius:14px;',
+        'color:rgba(255,255,255,0.9);font-family:Outfit,Inter,sans-serif;',
+        'font-size:13px;font-weight:700;padding:10px 16px;cursor:pointer;',
+        'box-shadow:0 4px 24px rgba(22,163,74,0.2);transition:all 0.2s ease;}',
+      '#rc-support-btn:hover{background:rgba(22,163,74,0.15);border-color:rgba(34,197,94,0.6);',
+        'transform:translateY(-2px);box-shadow:0 8px 32px rgba(22,163,74,0.3);}',
+      '#rc-support-overlay{position:fixed;inset:0;z-index:999991;display:none;',
+        'align-items:center;justify-content:center;',
+        'background:rgba(2,13,4,0.85);backdrop-filter:blur(16px);}',
+      '#rc-support-overlay.open{display:flex;}',
+      '#rc-support-modal{background:linear-gradient(180deg,rgba(4,20,8,0.99),rgba(2,12,5,0.99));',
+        'border:1px solid rgba(34,197,94,0.25);border-radius:20px;',
+        'box-shadow:0 40px 80px rgba(0,0,0,0.8);padding:32px;',
+        'width:calc(100vw - 40px);max-width:420px;font-family:Outfit,Inter,sans-serif;',
+        'position:relative;animation:rc-fadein 0.3s ease;}',
+      '#rc-support-close{position:absolute;top:14px;right:14px;background:none;border:none;',
+        'color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;padding:4px 8px;',
+        'border-radius:8px;line-height:1;}',
+      '#rc-support-close:hover{color:#fff;background:rgba(255,255,255,0.08);}',
+      '#rc-support-title{font-size:17px;font-weight:800;color:#fff;margin:0 0 20px;',
+        'letter-spacing:-0.02em;}',
+      '.rc-support-label{display:block;font-size:11px;font-weight:600;',
+        'color:rgba(134,239,172,0.6);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;}',
+      '.rc-support-input{width:100%;box-sizing:border-box;background:rgba(22,163,74,0.06);',
+        'border:1px solid rgba(34,197,94,0.2);border-radius:10px;',
+        'color:#fff;font-family:Outfit,Inter,sans-serif;font-size:13px;',
+        'padding:10px 14px;margin-bottom:14px;outline:none;resize:none;',
+        'transition:border-color 0.2s;}',
+      '.rc-support-input:focus{border-color:rgba(34,197,94,0.5);}',
+      '#rc-support-submit{width:100%;padding:12px;border:none;border-radius:12px;',
+        'background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;',
+        'font-family:Outfit,Inter,sans-serif;font-size:14px;font-weight:700;',
+        'cursor:pointer;transition:all 0.2s;margin-top:4px;}',
+      '#rc-support-submit:hover{background:linear-gradient(135deg,#22c55e,#16a34a);}',
+      '#rc-support-submit:disabled{opacity:0.5;cursor:not-allowed;}',
+      '#rc-support-feedback{font-size:13px;font-weight:600;text-align:center;',
+        'margin-top:12px;min-height:18px;}',
+    ].join('');
+    document.head.appendChild(style);
+
+    /* Floating button */
+    var btn = document.createElement('button');
+    btn.id = 'rc-support-btn';
+    btn.textContent = i18n.btn;
+    document.body.appendChild(btn);
+
+    /* Modal overlay */
+    var modalOverlay = document.createElement('div');
+    modalOverlay.id = 'rc-support-overlay';
+    modalOverlay.innerHTML = [
+      '<div id="rc-support-modal">',
+        '<button id="rc-support-close">✕</button>',
+        '<p id="rc-support-title">🎫 ' + i18n.title + '</p>',
+        '<label class="rc-support-label" for="rc-support-user">' + i18n.user + '</label>',
+        '<input id="rc-support-user" class="rc-support-input" type="text" autocomplete="off" maxlength="60">',
+        '<label class="rc-support-label" for="rc-support-msg">' + i18n.msg.replace('...','') + '</label>',
+        '<textarea id="rc-support-msg" class="rc-support-input" rows="4" placeholder="' + i18n.msg + '" maxlength="500"></textarea>',
+        '<button id="rc-support-submit">' + i18n.send + '</button>',
+        '<div id="rc-support-feedback"></div>',
+      '</div>',
+    ].join('');
+    document.body.appendChild(modalOverlay);
+
+    /* Open / close */
+    btn.addEventListener('click', function () {
+      modalOverlay.classList.add('open');
+      document.getElementById('rc-support-user').focus();
+    });
+    document.getElementById('rc-support-close').addEventListener('click', function () {
+      modalOverlay.classList.remove('open');
+    });
+    modalOverlay.addEventListener('click', function (e) {
+      if (e.target === modalOverlay) modalOverlay.classList.remove('open');
+    });
+
+    /* Submit */
+    document.getElementById('rc-support-submit').addEventListener('click', function () {
+      var submitBtn = document.getElementById('rc-support-submit');
+      var feedback = document.getElementById('rc-support-feedback');
+      var username = document.getElementById('rc-support-user').value.trim();
+      var message = document.getElementById('rc-support-msg').value.trim();
+
+      if (!username || !message) {
+        feedback.style.color = '#fca5a5';
+        feedback.textContent = '⚠️ Preencha todos os campos.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = i18n.sending;
+      feedback.textContent = '';
+
+      fetch('/api/support/ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, message: message, lang: lang }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            feedback.style.color = '#86efac';
+            feedback.textContent = i18n.ok;
+            document.getElementById('rc-support-user').value = '';
+            document.getElementById('rc-support-msg').value = '';
+            setTimeout(function () { modalOverlay.classList.remove('open'); feedback.textContent = ''; }, 2500);
+          } else {
+            throw new Error('not ok');
+          }
+        })
+        .catch(function () {
+          feedback.style.color = '#fca5a5';
+          feedback.textContent = i18n.err;
+        })
+        .finally(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = i18n.send;
+        });
+    });
+  }
+
+  /* Inject support UI after page loads */
+  if (document.body) {
+    injectSupportSystem();
+  } else {
+    document.addEventListener('DOMContentLoaded', injectSupportSystem);
+  }
+
   /* ── Webhook proxy: redirect Discord calls to our API ───── */
   var _origFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
