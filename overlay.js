@@ -83,7 +83,7 @@
     var overlay = document.getElementById('rc-lang-overlay');
     if (overlay) {
       overlay.style.animation = 'rc-fadeout 0.3s ease forwards';
-      setTimeout(function () { overlay.style.display = 'none'; }, 320);
+      setTimeout(function () { window.location.reload(); }, 320);
     }
   }
 
